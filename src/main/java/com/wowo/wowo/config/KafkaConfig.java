@@ -52,21 +52,37 @@ public class KafkaConfig {
     private void addSslConfigs(Map<String, Object> currentConfigs, Map<String, Object> updates) {
         String bootstrap = (String) currentConfigs.get("bootstrap.servers");
         if (bootstrap != null && bootstrap.contains("aivencloud")) {
-            log.info("Aiven Kafka bootstrap server detected: {}. Configuring SSL using classpath PEM files...", bootstrap);
+            log.info("Aiven Kafka bootstrap server detected: {}. Configuring SSL security...", bootstrap);
             try {
-                String ca = readResource("ca.pem");
-                String cert = readResource("service.cert");
-                String key = readResource("service.key");
+                // Đọc từ biến môi trường để bảo mật trên Cloud Render
+                String ca = System.getenv("KAFKA_CA_PEM");
+                String cert = System.getenv("KAFKA_SERVICE_CERT");
+                String key = System.getenv("KAFKA_SERVICE_KEY");
 
-                updates.put("security.protocol", "SSL");
-                updates.put("ssl.truststore.type", "PEM");
-                updates.put("ssl.truststore.certificates", ca);
-                updates.put("ssl.keystore.type", "PEM");
-                updates.put("ssl.keystore.key", key);
-                updates.put("ssl.keystore.certificate.chain", cert);
-                log.info("Kafka SSL configuration applied successfully.");
+                // Nếu không có biến môi trường (ví dụ chạy local), đọc dự phòng từ file trong resources
+                if (ca == null || ca.isEmpty()) {
+                    try { ca = readResource("ca.pem"); } catch (Exception ignored) {}
+                }
+                if (cert == null || cert.isEmpty()) {
+                    try { cert = readResource("service.cert"); } catch (Exception ignored) {}
+                }
+                if (key == null || key.isEmpty()) {
+                    try { key = readResource("service.key"); } catch (Exception ignored) {}
+                }
+
+                if (ca != null && cert != null && key != null) {
+                    updates.put("security.protocol", "SSL");
+                    updates.put("ssl.truststore.type", "PEM");
+                    updates.put("ssl.truststore.certificates", ca);
+                    updates.put("ssl.keystore.type", "PEM");
+                    updates.put("ssl.keystore.key", key);
+                    updates.put("ssl.keystore.certificate.chain", cert);
+                    log.info("Kafka SSL configuration applied successfully.");
+                } else {
+                    log.warn("Kafka SSL certificates are missing from both environment variables and classpath resources.");
+                }
             } catch (Exception e) {
-                log.error("Failed to load Kafka SSL certificates from classpath resources (ca.pem, service.cert, service.key)", e);
+                log.error("Failed to load Kafka SSL configurations", e);
             }
         }
     }
