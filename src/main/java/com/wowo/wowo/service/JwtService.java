@@ -6,7 +6,6 @@ import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.wowo.wowo.model.User;
 import com.wowo.wowo.util.ObjectUtil;
-import com.wowo.wowo.util.RSAUtil;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Service;
 
@@ -19,16 +18,30 @@ import java.util.Date;
 public class JwtService {
 
     private static final int expire = 60 * 24;
-    private static final Algorithm algorithm = Algorithm.RSA256(RSAUtil.getPublicKeyFromString());
-    private static final JWTVerifier verifier = JWT.require(algorithm)
-            .build();
     private static String secret;
+    private static Algorithm algorithm;
+    private static JWTVerifier verifier;
+
+    public void setSecret(String secret) {
+        JwtService.secret = secret;
+        JwtService.algorithm = Algorithm.HMAC256(secret);
+        JwtService.verifier = JWT.require(JwtService.algorithm).build();
+    }
 
     public static String generateToken(User user) {
-        //convert user to json
+        java.util.Map<String, Object> claims = new java.util.HashMap<>();
+        claims.put("userId", user.getId());
+        claims.put("id", user.getId());
+        claims.put("email", user.getEmail());
+        claims.put("username", user.getUsername());
+        if (user.getRole() != null) {
+            claims.put("role", java.util.Map.of("name", user.getRole().getName()));
+        } else {
+            claims.put("role", java.util.Map.of("name", "User"));
+        }
         return JWT.create()
                 .withSubject(String.valueOf(user.getId()))
-                .withPayload(ObjectUtil.parseJson(user))
+                .withPayload(ObjectUtil.parseJson(claims))
                 .withExpiresAt(Date.from(Instant.now()
                         .plus(expire, ChronoUnit.MINUTES)))
                 .sign(algorithm);
@@ -54,10 +67,19 @@ public class JwtService {
      * @return chuỗi token
      */
     public static String generateToken(User user, int expire) {
-        //convert user to json
+        java.util.Map<String, Object> claims = new java.util.HashMap<>();
+        claims.put("userId", user.getId());
+        claims.put("id", user.getId());
+        claims.put("email", user.getEmail());
+        claims.put("username", user.getUsername());
+        if (user.getRole() != null) {
+            claims.put("role", java.util.Map.of("name", user.getRole().getName()));
+        } else {
+            claims.put("role", java.util.Map.of("name", "User"));
+        }
         return JWT.create()
                 .withSubject(String.valueOf(user.getId()))
-                .withPayload(ObjectUtil.parseJson(user))
+                .withPayload(ObjectUtil.parseJson(claims))
                 .withExpiresAt(Date.from(Instant.now()
                         .plus(expire, ChronoUnit.MINUTES)))
                 .sign(algorithm);

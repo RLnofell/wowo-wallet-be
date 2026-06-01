@@ -50,7 +50,15 @@ public class KafkaConfig {
     }
 
     private void addSslConfigs(Map<String, Object> currentConfigs, Map<String, Object> updates) {
-        String bootstrap = (String) currentConfigs.get("bootstrap.servers");
+        Object bootstrapObj = currentConfigs.get("bootstrap.servers");
+        String bootstrap = null;
+        if (bootstrapObj instanceof String) {
+            bootstrap = (String) bootstrapObj;
+        } else if (bootstrapObj instanceof java.util.List<?> list) {
+            if (!list.isEmpty()) {
+                bootstrap = String.valueOf(list.get(0));
+            }
+        }
         if (bootstrap != null && bootstrap.contains("aivencloud")) {
             log.info("Aiven Kafka bootstrap server detected: {}. Configuring SSL security...", bootstrap);
             try {

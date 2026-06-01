@@ -42,6 +42,7 @@ import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 public class EWalletApplication {
 
     public static void main(String[] args) {
+        java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("UTC"));
         SpringApplication.run(EWalletApplication.class, args);
     }
 

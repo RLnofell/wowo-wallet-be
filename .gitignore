@@ -477,3 +477,7 @@ gradle-app.setting
 
 .env
 /docker
+**.cert
+**.key
+
+gradle.properties

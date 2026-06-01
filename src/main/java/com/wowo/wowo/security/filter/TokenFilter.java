@@ -43,7 +43,23 @@ public class TokenFilter implements Filter {
             return;
         }
 
-        final String role = decodedJWT.getClaim("role").as(String.class);
+        String role = null;
+        var roleClaim = decodedJWT.getClaim("role");
+        if (!roleClaim.isMissing() && !roleClaim.isNull()) {
+            try {
+                var roleMap = roleClaim.asMap();
+                if (roleMap != null && roleMap.get("name") instanceof String rName) {
+                    role = rName;
+                }
+            } catch (Exception e) {
+                role = roleClaim.as(String.class);
+            }
+        }
+
+        if (role == null) {
+            chain.doFilter(request, response);
+            return;
+        }
 
         SecurityContextHolderStrategy contextHolder =
                 SecurityContextHolder.getContextHolderStrategy();
@@ -51,19 +67,35 @@ public class TokenFilter implements Filter {
 
         var authorities = Collections.singleton(
                 new SimpleGrantedAuthority("ROLE_" + role.toUpperCase()));
-        UsernamePasswordAuthenticationToken authenticationToken;
-        if (role.equals("user")) {
-            authenticationToken = new UsernamePasswordAuthenticationToken(
-                    decodedJWT.getClaim("userId").toString().replaceAll("\"", ""),
-                    cookie.getValue(),
-                    authorities);
+
+        String principalId = null;
+        if (role.equalsIgnoreCase("user")) {
+            var userIdClaim = decodedJWT.getClaim("userId");
+            if (!userIdClaim.isMissing() && !userIdClaim.isNull()) {
+                principalId = userIdClaim.asString();
+            }
+        } else {
+            var partnerIdClaim = decodedJWT.getClaim("partnerId");
+            if (!partnerIdClaim.isMissing() && !partnerIdClaim.isNull()) {
+                principalId = partnerIdClaim.asString();
+            }
         }
-        else {
-            authenticationToken = new UsernamePasswordAuthenticationToken(
-                    decodedJWT.getClaim("partnerId").toString().replaceAll("\"", ""),
-                    cookie.getValue(),
-                    authorities);
+
+        if (principalId == null) {
+            var idClaim = decodedJWT.getClaim("id");
+            if (!idClaim.isMissing() && !idClaim.isNull()) {
+                principalId = idClaim.asString();
+            }
         }
+
+        if (principalId == null) {
+            principalId = decodedJWT.getSubject();
+        }
+
+        UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(
+                principalId,
+                cookie.getValue(),
+                authorities);
 
         authenticationToken.setDetails(decodedJWT);
 

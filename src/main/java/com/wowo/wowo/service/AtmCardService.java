@@ -59,7 +59,7 @@ public class AtmCardService {
         atmCard.setOwner(user);
 
         atmCardRepository.findByCardNumber(atmCard.getCardNumber())
-                .ifPresent(_ -> {
+                .ifPresent(card -> {
                     throw new NotFoundException("Thẻ đã tồn tại");
                 });
 
